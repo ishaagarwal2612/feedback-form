@@ -1,12 +1,44 @@
 # Feedback Form React App
 
-This project is a full-stack feedback form built with React (frontend) and Node.js/Express (backend). Users can submit feedback, and admins can log in to view all responses.
+This project is a full-stack feedback form built with React, featuring Supabase authentication and protected routes. Users need to authenticate before submitting feedback, and admins can log in to view all responses.
 
 ## Features
-- User feedback form (name, email, message)
+- User authentication (signup/login) using Supabase
+- Protected feedback form
+- Admin access control
 - Thank you message after submission
-- Admin login to view all feedback responses
-- Data stored in a JSON file on the server
+- Admin panel to view all feedback responses
+
+## Setup
+
+1. Install dependencies:
+```bash
+npm install
+```
+
+2. Create a Supabase project:
+   - Go to [Supabase](https://supabase.com)
+   - Create a new project
+   - Go to Project Settings > API
+   - Copy the Project URL and anon/public key
+
+3. Create a `.env` file in the root directory and add your Supabase credentials:
+```env
+REACT_APP_SUPABASE_URL=your_project_url
+REACT_APP_SUPABASE_ANON_KEY=your_anon_key
+```
+
+4. Start the development server:
+```bash
+npm start
+```
+
+## Tech Stack
+- React
+- TypeScript
+- Supabase (Authentication)
+- Webpack
+- CSS Modules
 
 ## Prerequisites
 - Node.js and npm installed

@@ -1,98 +1,114 @@
-import React, { useState } from 'react';
-import '../style/FeedbackForm.css';
-
-const API_URL = 'http://localhost:4000/api';
-const ADMIN_CREDENTIALS = { username: 'admin', password: 'admin123' };
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../config/supabaseClient';
+import '../style/AdminPanel.css';
 
 const AdminLogin = () => {
-  const [form, setForm] = useState({ username: '', password: '' });
-  const [loggedIn, setLoggedIn] = useState(false);
   const [feedbacks, setFeedbacks] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [currentUser, setCurrentUser] = useState(null);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-  };
+  useEffect(() => {
+    checkUser();
+    fetchFeedbacks();
+  }, []);
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    if (
-      form.username === ADMIN_CREDENTIALS.username &&
-      form.password === ADMIN_CREDENTIALS.password
-    ) {
-      setLoggedIn(true);
-      setError('');
-      // Fetch feedbacks
-      const res = await fetch(`${API_URL}/feedbacks`);
-      const data = await res.json();
-      setFeedbacks(data);
-    } else {
-      setError('Invalid credentials');
+  const checkUser = async () => {
+    try {
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (error) throw error;
+      setCurrentUser(user);
+    } catch (error) {
+      console.error('Error checking user:', error);
     }
   };
 
-  if (!loggedIn) {
+  const fetchFeedbacks = async () => {
+    try {
+      // First verify if user is authenticated
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError) {
+        throw new Error('Authentication error. Please log in again.');
+      }
+
+      if (!user) {
+        throw new Error('No authenticated user found.');
+      }
+
+      console.log('Fetching feedbacks as user:', user.email); // Debug log
+
+      const { data, error } = await supabase
+        .from('feedbacks')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Supabase error:', error); // Debug log
+        throw error;
+      }
+
+      console.log('Fetched feedbacks:', data); // Debug log
+      setFeedbacks(data || []);
+    } catch (error) {
+      const errorMessage = error.message || 'Error fetching feedbacks. Please try again later.';
+      setError(errorMessage);
+      console.error('Detailed error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
     return (
-      <form className="feedback-form" onSubmit={handleLogin} style={{ maxWidth: 350 }}>
-        <h2>Admin Login</h2>
-        <label>
-          Username:
-          <input
-            type="text"
-            name="username"
-            value={form.username}
-            onChange={handleChange}
-            required
-          />
-        </label>
-        <label>
-          Password:
-          <input
-            type="password"
-            name="password"
-            value={form.password}
-            onChange={handleChange}
-            required
-          />
-        </label>
-        <button type="submit">Login</button>
-        {error && <p className="error-message">{error}</p>}
-      </form>
+      <div className="admin-panel">
+        <div className="empty-state">
+          <p>Loading feedbacks...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show current user info in error state for debugging
+  if (error) {
+    return (
+      <div className="admin-panel">
+        <div className="error-message">
+          <p>{error}</p>
+          {currentUser && (
+            <p>Logged in as: {currentUser.email}</p>
+          )}
+        </div>
+      </div>
     );
   }
 
   return (
-    <div style={{ marginTop: '2rem' }}>
-      <h3>All Feedback Responses</h3>
+    <div className="admin-panel">
+      <h2>Admin Panel - Feedback Responses</h2>
+      {currentUser && (
+        <p className="admin-info">Logged in as: {currentUser.email}</p>
+      )}
       {feedbacks.length === 0 ? (
-        <p>No feedbacks yet.</p>
+        <div className="empty-state">
+          <p>No feedback submissions yet.</p>
+        </div>
       ) : (
-        <div className="feedback-table-wrapper">
-          <table className="feedback-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Message</th>
-                <th>Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {feedbacks.map((fb, idx) => (
-                <tr key={idx}>
-                  <td>{fb.name}</td>
-                  <td>{fb.email}</td>
-                  <td>{fb.message}</td>
-                  <td>{new Date(fb.date).toLocaleString()}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="feedback-list">
+          {feedbacks.map((feedback) => (
+            <div key={feedback.id} className="feedback-item">
+              <h3>{feedback.name}</h3>
+              <p><strong>Email:</strong> {feedback.email}</p>
+              <p><strong>Message:</strong> {feedback.message}</p>
+              <div className="feedback-meta">
+                <span>Submitted {new Date(feedback.created_at).toLocaleString()}</span>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
   );
 };
 
-export default AdminLogin; 
+export default AdminLogin;
